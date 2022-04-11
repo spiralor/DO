@@ -76,10 +76,23 @@ def create_region_area_nc(key, file_path=None):
 
 if __name__ == '__main__':
 
-    create_region_area_nc('Coastal_N_Indian')
-    create_region_area_nc('Coastal_Eq_Indian')
-    create_region_area_nc('Coastal_S_Indian')
-    # for key in dict.keys():
-        # create_region_area_nc(key, file_path)
+    file_path = 'cdo_RF_500_15_fit_1970_qc_third_o2_median_delete_lon/change_rate'
+    for key in dict.keys():
+        create_region_area_nc(key, file_path)
+        # for year in [1960, 1970, 1980, 1990, 2000, 2010]:
+        #     create_ocean_region_nc(year, key, file_path)
+        print(key + ' finish!')
+
+    # 计算DO水柱的总体积
+    shell = "cdo -vertsum -expr,'V = o2_pred_rf/1000/1000/1000/1000000'  -mul -fldsum -mul " \
+            "-setrtoc,0,1000,1 -timmean ../ExtraTreesRegressor/RESULT/ensemble/mean/1871_do_predict_mean.nc " \
+            "../gr_area.nc ../depth_height.nc ../ocean_area/Total_volume.nc "
+    os.system(shell)
+    # 计算DO不同大洋上水柱的总体积
+    for key in dict.keys():
+        shell = "cdo -vertsum -expr,'V = o2_pred_rf/1000/1000/1000/1000000'  -mul -fldsum -mul " \
+            "-setrtoc,0,1000,1 -timmean ../ExtraTreesRegressor/RESULT/ensemble/mean/1871_do_predict_mean.nc " \
+            "../ocean_area/{0}_area.nc ../depth_height.nc ../ocean_area/{0}_volume.nc ".format(key)
+        os.system(shell)
+
         
-        # print(key + ' finish!')
