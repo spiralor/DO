@@ -18,15 +18,29 @@ import sys
 db = 'db'
 db_f = 'db_f'
 tag = 'tag'
+lon_resolution = 0.5
+lat_resolution = 0.5
+lon_min = 0.25
+lon_max = 359.75
+lat_min = -74.75
+lat_max = 89.75
+lat_upper_bnds = (lat_max - lat_min) / lat_resolution
+lon_upper_bnds = (lon_max - lon_min) / lon_resolution
+lat_lower_bnds = 0
+lon_lower_bnds = 0
+lat_dimension = lat_upper_bnds + 1
+lon_dimension = lon_upper_bnds + 1
 
 depthList = np.array([5.034, 15.101, 25.219, 35.358, 45.576, 55.853, 66.262, 76.803, 87.577, 98.623, 110.096,
                       122.107, 134.909, 148.747, 164.054, 181.312, 201.263, 224.777, 253.068, 287.551, 330.008,
                       382.365, 446.726, 524.982, 618.703, 728.692, 854.994, 996.715, 1152.376, 1319.997, 1497.562,
                       1683.057, 1874.788, 2071.252, 2271.323, 2474.043, 2678.757, 2884.898, 3092.117, 3300.086,
-                      3508.633, 3717.567, 3926.813, 4136.251, 4345.864, 4555.566, 4765.369, 4975.209, 5185.111, 5395.023])
+                      3508.633, 3717.567, 3926.813, 4136.251, 4345.864, 4555.566, 4765.369, 4975.209, 5185.111,
+                      5395.023])
+depth_level = len(depthList)  # depth_level = 50
 
-depthInsideList = np.zeros((50,))
-for index in range(50):
+depthInsideList = np.zeros((depth_level,))
+for index in range(depth_level):
     if depthList[index] <= 237.5:
         depthInsideList[index] = 50
     elif depthList[index] > 237.5 and depthList[index] <= 875:
@@ -36,15 +50,17 @@ for index in range(50):
     elif depthList[index] > 1975:
         depthInsideList[index] = 1000
 
-depthOutsideList = np.zeros((50,))
-for index in range(50):
+depthOutsideList = np.zeros((depth_level,))
+for index in range(depth_level):
     if depthList[index] <= 487.5:
         depthOutsideList[index] = 200
     elif depthList[index] > 487.5 and depthList[index] <= 1275:
         depthOutsideList[index] = 400
     elif depthList[index] > 1275:
         depthOutsideList[index] = 1000
+
 print(depthOutsideList)
+
 
 def flin(x, a, b):
     # dimension a(3), b(3)
@@ -136,30 +152,30 @@ def process(year):
 
         # print("year=", year, "month=", month, "共", len(rows), "条数据")
 
-        array = np.zeros((360, 720, 2))
-        gridList = [""] * 720 * 360
+        array = np.zeros((lat_dimension, lon_dimension))
+        gridList = [""] * lon_dimension * lat_dimension
         for index in range(0, len(rows)):
-            array[math.floor((rows[index][3] if rows[index][3] != 180 else 179.5) / 0.5), math.floor(
-                (rows[index][2] if rows[index][2] != 360 else 0) / 0.5), 0] += 1
-            gridList[math.floor((rows[index][2] if rows[index][2] != 360 else 0) / 0.5) + math.floor(
-                (rows[index][3] if rows[index][3] != 180 else 179.5) / 0.5) * 720] += (str(index) + ',')
-            rows[index] = (
-                rows[index][0], rows[index][1], math.floor((rows[index][2] if rows[index][2] != 360 else 0) / 0.5),
-                math.floor((rows[index][3] if rows[index][3] != 180 else 179.5) / 0.5),
-                rows[index][4], rows[index][5])
-        index = 0
-        for index in range(0, 720 * 360):
-            if array[math.floor(index / 720), index % 720, 0] == 0:
+            row_lat = rows[index][3]
+            row_lon = rows[index][2]
+            row_lat_index = int((row_lat - lat_min) / lat_resolution)
+            row_lon_index = int((row_lon - lon_min) / lon_resolution)
+            if row_lat_index < lat_lower_bnds or row_lat_index > lat_upper_bnds or row_lon_index < lon_lower_bnds or row_lon_index > lon_upper_bnds:
+                continue
+            array[row_lat_index, row_lon_index] += 1
+            gridList[row_lon_index + lon_dimension * row_lat_index] += (str(index) + ',')
+            rows[index] = (rows[index][0], rows[index][1], row_lon_index, row_lat_index, rows[index][4], rows[index][5])
+
+        for index in range(0, lon_dimension * lat_dimension):
+            if array[math.floor(index / lon_dimension), index % lon_dimension] == 0:
                 continue
             rowString = gridList[index]
             rowt = rowString.split(',')
             gridRow = []
             for temp in range(0, len(rowt) - 1):
                 gridRow.append(rows[int(rowt[temp])])
-            # print('gridRow:')
-            # print(gridRow)
+
             distanceMatrix = np.zeros((len(gridRow), 1))
-            for depthNumber in range(0, 40):
+            for depthNumber in range(depth_level):
                 # above 1 below 2
                 lagrangian_flag1 = False
                 # above 2 below 1
@@ -192,9 +208,9 @@ def process(year):
                     y_mean = np.mean(data)
                     y_median = np.median(data)
 
-                    result = [year, month, gridRow[distanceMatrixIndex0[0][0]][2] / 2 + 0.25,
-                              gridRow[distanceMatrixIndex0[0][0]][3] / 2 + 0.25 - 90, depthList[depthNumber], y_mean,
-                              y_median]
+                    gridRow_lon = gridRow[distanceMatrixIndex0[0][0]][2] * lon_resolution + lon_min
+                    gridRow_lat = gridRow[distanceMatrixIndex0[0][0]][3] * lat_resolution + lat_min
+                    result = [year, month, gridRow_lon, gridRow_lat, depthList[depthNumber], y_mean, y_median]
                     insertSQL = "INSERT INTO \"GRIDDING_{7}_{8}_grid_intlev\" (\"Year\", \"Month\", \"Longitude\", \"Latitude\", \"depth(m)\", \"Oxy_mean\", \"Oxy_median\") " \
                                 "values('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')" \
                         .format(result[0], result[1], result[2], result[3], result[4], result[5], result[6],
@@ -439,8 +455,10 @@ def process(year):
                 # 5.提取结果，保存到数据库
                 # 保存形式："Year" "Month" "Longitude" "Latitude" "depth(m)" "pointX" "pointY" "Oxy"
                 # print(index)
-                result = [year, month, gridRow[outsideAbove][2] / 2 + 0.25, gridRow[outsideAbove][3] / 2 + 0.25 - 90,
-                          depthList[depthNumber], y_mean, y_median]
+                gridRow_lon = gridRow[distanceMatrixIndex0[0][0]][2] * lon_resolution + lon_min
+                gridRow_lat = gridRow[distanceMatrixIndex0[0][0]][3] * lat_resolution + lat_min
+
+                result = [year, month, gridRow_lon, gridRow_lat, depthList[depthNumber], y_mean, y_median]
 
                 if y_median < 0:
                     print('this is negative Oxy ==============================')
@@ -467,7 +485,7 @@ def process(year):
     conn.commit()
     cur.close()
     conn.close()
-    print(year, '    END!!!!')
+    print(year, 'END!!!!')
 
 
 if __name__ == '__main__':
@@ -475,11 +493,6 @@ if __name__ == '__main__':
     cur = conn.cursor()
     source_db = 'GRIDDING_data_merge_format'
     target_db = 'GRIDDING_{0}_{1}_grid_intlev'.format(db + '_' + db_f, tag)
-    create_table_sql = "drop table if exists \"{0}\"; " \
-                       "create table \"{0}\" ( like \"{1}\" INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES );" \
-        .format(target_db, source_db)
-    cur.execute(create_table_sql)
-    conn.commit()
 
     source_db = 'year'
     target_db = 'year_{0}'.format(db + '_' + db_f)
