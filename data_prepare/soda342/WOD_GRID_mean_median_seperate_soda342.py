@@ -18,6 +18,9 @@ import sys
 db = 'db'
 db_f = 'db_f'
 tag = 'tag'
+
+select_db = '2db_flag_v0_out'
+insert_db = 'SODA342_2db_v0_i0_grid_intlev'
 lon_resolution = 0.5
 lat_resolution = 0.5
 lon_min = 0.25
@@ -58,8 +61,6 @@ for index in range(depth_level):
         depthOutsideList[index] = 400
     elif depthList[index] > 1275:
         depthOutsideList[index] = 1000
-
-print(depthOutsideList)
 
 
 def flin(x, a, b):
@@ -121,32 +122,11 @@ def process(year):
 
     cur = conn.cursor()
     for month in range(1, 13):
-        # remove calculate avg in pg
         sql = (
-            "SELECT * FROM" \
-            "(" \
-            "(select \"Year\"::int,\"Month\"::int,\"Longitude\"::float as \"Longitude\",\"Latitude\"::float+90 as \"Latitude\",\"depth(m)\"::float, \"Oxy\"::float " \
-            "from \"{3}_flag_{2}_out\" " \
-            "where \"Year\" = '{0}' and \"Month\" = '{1}' " \
-                # "group by \"Year\"::int,\"Month\"::int,\"Longitude\"::float,\"Latitude\"::float,\"depth(m)\"::float " \
-            ")" \
-                # "UNION" \
-            # "(select \"Year\"::int,\"Month\"::int,\"Longitude\"::float+180 as \"Longitude\",\"Latitude\"::float+90 as \"Latitude\",\"depth(m)\"::float, \"Oxy\"::float " \
-            # "from \"CTD_flag_third_{2}_out\" " \
-            # "where \"Year\" = '{0}' and \"Month\" = '{1}' " \
-            # # "group by \"Year\"::int,\"Month\"::int,\"Longitude\"::float,\"Latitude\"::float,\"depth(m)\"::float " \
-            # ")" \
-            # "UNION" \
-            # "(select \"Year\"::int,\"Month\"::int,\"Longitude\"::float+180 as \"Longitude\",\"Latitude\"::float+90 as \"Latitude\",\"depth(m)\"::float, \"Oxy\"::float " \
-            # "from \"PFL_flag_out_third\" " \
-            # "where \"Year\" = '{0}' and \"Month\" = '{1}' " \
-            # # "group by \"Year\"::float,\"Month\"::float,\"Longitude\"::float,\"Latitude\"::float,\"depth(m)\"::float " \
-            # ")" \
-            ") " \
-            "AS result where \"Longitude\"::float >= 0 and \"Longitude\"::float <= 360 and \"Latitude\"::float >= 0 and \"Latitude\"::float <= 180" \
-            "order by \"depth(m)\"::float,\"Longitude\"::float,\"Latitude\"::float " \
-            ) \
-            .format(str(year), str(month), db_f, db)
+            "select \"Year\"::int, \"Month\"::int, \"Longitude\"::float, \"Latitude\"::float, \"depth(m)\"::float, \"Oxy\"::float "
+            "from \"2db_flag_v0_out\" where \"Year\"::int = {0} and \"Month\"::int = {1} order by"
+            " \"Year\"::int,\"Month\"::int,\"depth(m)\"::float,\"Longitude\"::float,\"Latitude\"::float"). \
+            format(year, month, select_db)
         cur.execute(sql)
         rows = cur.fetchall()
 
@@ -211,10 +191,10 @@ def process(year):
                     gridRow_lon = gridRow[distanceMatrixIndex0[0][0]][2] * lon_resolution + lon_min
                     gridRow_lat = gridRow[distanceMatrixIndex0[0][0]][3] * lat_resolution + lat_min
                     result = [year, month, gridRow_lon, gridRow_lat, depthList[depthNumber], y_mean, y_median]
-                    insertSQL = "INSERT INTO \"GRIDDING_{7}_{8}_grid_intlev\" (\"Year\", \"Month\", \"Longitude\", \"Latitude\", \"depth(m)\", \"Oxy_mean\", \"Oxy_median\") " \
+                    insertSQL = "INSERT INTO \"{7}\" (\"Year\", \"Month\", \"Longitude\", \"Latitude\", \"depth(m)\", \"Oxy_mean\", \"Oxy_median\") " \
                                 "values('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')" \
                         .format(result[0], result[1], result[2], result[3], result[4], result[5], result[6],
-                                db + '_' + db_f, tag)
+                                insert_db)
                     cur.execute(insertSQL)
                     conn.commit()
                     continue
@@ -470,19 +450,15 @@ def process(year):
                     # print(gridRow[insideBelow])
                     # print(gridRow[outsideBelow])
 
-                insertSQL = "INSERT INTO \"GRIDDING_{7}_{8}_grid_intlev\" (\"Year\", \"Month\", \"Longitude\", \"Latitude\", \"depth(m)\", \"Oxy_mean\", \"Oxy_median\") " \
+                insertSQL = "INSERT INTO \"{7}\" (\"Year\", \"Month\", \"Longitude\", \"Latitude\", \"depth(m)\", \"Oxy_mean\", \"Oxy_median\") " \
                             "values('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')" \
-                    .format(result[0], result[1], result[2], result[3], result[4], result[5], result[6],
-                            db + '_' + db_f, tag)
+                    .format(result[0], result[1], result[2], result[3], result[4], result[5], result[6], insert_db)
                 cur.execute(insertSQL)
                 conn.commit()
                 # print("y_mean=", y_mean, "y_median", y_median)
                 # print(pointSet_mean)
                 # print(pointSet_median)
 
-    donesql = "INSERT INTO \"year_{1}\" (\"yeardone\") VALUES ('{0}')".format(year, db + '_' + db_f)
-    cur.execute(donesql)
-    conn.commit()
     cur.close()
     conn.close()
     print(year, 'END!!!!')
@@ -491,21 +467,8 @@ def process(year):
 if __name__ == '__main__':
     conn = psycopg2.connect(database="do", user="postgres", password="1q!@hyes0913", host="202.121.180.60", port="5432")
     cur = conn.cursor()
-    source_db = 'GRIDDING_data_merge_format'
-    target_db = 'GRIDDING_{0}_{1}_grid_intlev'.format(db + '_' + db_f, tag)
-
-    source_db = 'year'
-    target_db = 'year_{0}'.format(db + '_' + db_f)
-    create_table_sql = "drop table if exists \"{0}\"; " \
-                       "create table \"{0}\" ( like \"{1}\" INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES );" \
-        .format(target_db, source_db)
-    cur.execute(create_table_sql)
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    items = range(1871, 2011)
-    # items = range(1981, 1982)
+    # items = range(1980, 2019)
+    items = range(1981, 1982)
     pool = ThreadPool(20)
     pool.map(process, items)
     pool.close()
