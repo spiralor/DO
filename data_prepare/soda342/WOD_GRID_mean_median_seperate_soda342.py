@@ -15,10 +15,6 @@ from multiprocessing import Pool as ThreadPool
 import os, time
 import sys
 
-db = 'db'
-db_f = 'db_f'
-tag = 'tag'
-
 select_db = '2db_flag_v0_out'
 insert_db = 'SODA342_2db_v0_i0_grid_intlev'
 lon_resolution = 0.5
