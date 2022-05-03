@@ -23,8 +23,8 @@ lon_min = 0.25
 lon_max = 359.75
 lat_min = -74.75
 lat_max = 89.75
-lat_upper_bnds = (lat_max - lat_min) / lat_resolution
-lon_upper_bnds = (lon_max - lon_min) / lon_resolution
+lat_upper_bnds = int((lat_max - lat_min) / lat_resolution)
+lon_upper_bnds = int((lon_max - lon_min) / lon_resolution)
 lat_lower_bnds = 0
 lon_lower_bnds = 0
 lat_dimension = lat_upper_bnds + 1
@@ -431,8 +431,8 @@ def process(year):
                 # 5.提取结果，保存到数据库
                 # 保存形式："Year" "Month" "Longitude" "Latitude" "depth(m)" "pointX" "pointY" "Oxy"
                 # print(index)
-                gridRow_lon = gridRow[distanceMatrixIndex0[0][0]][2] * lon_resolution + lon_min
-                gridRow_lat = gridRow[distanceMatrixIndex0[0][0]][3] * lat_resolution + lat_min
+                gridRow_lon = gridRow[outsideAbove][2] * lon_resolution + lon_min
+                gridRow_lat = gridRow[outsideAbove][3] * lat_resolution + lat_min
 
                 result = [year, month, gridRow_lon, gridRow_lat, depthList[depthNumber], y_mean, y_median]
 
@@ -464,7 +464,7 @@ if __name__ == '__main__':
     conn = psycopg2.connect(database="do", user="postgres", password="1q!@hyes0913", host="202.121.180.60", port="5432")
     cur = conn.cursor()
     # items = range(1980, 2019)
-    items = range(1981, 1982)
+    items = [1980]
     pool = ThreadPool(20)
     pool.map(process, items)
     pool.close()
