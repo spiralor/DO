@@ -157,6 +157,7 @@ etop_data = imageio.imread(r'F:\DO\ETOP\ETOPO1_Bed_resample_geotiff.tif')
 sea_num_nc = Dataset(r'E:/do4/sea_region/ocean_area_0.5deg.nc')
 sea_num_data = sea_num_nc.variables['area_num'][:]
 etop_arr = np.array(etop_data)
+etop_arr = etop_arr[::-1]
 sea_num_arr = np.array(sea_num_data)
 target_db = 'GRIDDING_SODA342_2db_v0_i0_grid_intlev_match_all_copy1'
 
@@ -202,7 +203,7 @@ def match_background_var(year):
 
             sea_num_lat_index = int((lat - sea_region_lat_min) / lat_resolution)
             sea_num_lon_index = int((lon - sea_region_lon_min) / lon_resolution)
-            sea_num = sea_num_arr[sea_num_lat_index, sea_num_lon_index]
+            sea_num = int(sea_num_arr[sea_num_lat_index, sea_num_lon_index])
 
             lat_index = int((lat - lat_min) / resolution)
             lon_index = int((lon - lon_min) / resolution)
