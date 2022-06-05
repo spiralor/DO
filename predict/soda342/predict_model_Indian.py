@@ -15,38 +15,50 @@ def model_predict(tup):
 
     DstFilePath = r'soda3.4.2_mn_ocean_reg_{0}.nc'.format(str(yearIndex))
     DstFilePath2 = result_path + '{0}_do_predict_zip.nc'.format(str(yearIndex))
-
+    
     X = Dataset(to_predict_path + DstFilePath)
+    # 检索定位印度洋的lon-lat box
+    lon_min = 21.75
+    lon_max = 151.25
+    lat_min = -49.75
+    lat_max = 26.75
+    lon = X.variables['xt_ocean'][:]
+    lat = X.variables['yt_ocean'][:]
+    lon_min_index = np.where(lon == lon_min)[0][0]
+    lon_max_index = np.where(lon == lon_max)[0][0]
+    lat_min_index = np.where(lat == lat_min)[0][0]
+    lat_max_index = np.where(lat == lat_max)[0][0]
+
     etop_nc = Dataset('etop_soda342.nc')
-    etop = etop_nc.variables['etop'][:]
+    etop = etop_nc.variables['etop'][lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
     time_units = X.variables['time'].units
     time = X.variables['time'][:]
     year = yearIndex
     depth = X.variables['st_ocean'][:]
-    lat = X.variables['yt_ocean'][:]
-    lon = X.variables['xt_ocean'][:]
-    taux = X.variables['taux'][:]
-    tauy = X.variables['tauy'][:]
-    ssh = X.variables['ssh'][:]
-    u = X.variables['u'][:]
-    v = X.variables['v'][:]
-    w = X.variables['wt'][:]
-    salt = X.variables['salt'][:]
-    temp = X.variables['temp'][:]
-    mlp = X.variables['mlp'][:]
-    mls = X.variables['mls'][:]
-    mlt = X.variables['mlt'][:]
-    net_heating = X.variables['net_heating'][:]
-    prho = X.variables['prho'][:]
+    lat = X.variables['yt_ocean'][lat_min_index:lat_max_index + 1]
+    lon = X.variables['xt_ocean'][lon_min_index:lon_max_index + 1]
+    taux = X.variables['taux'][:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    tauy = X.variables['tauy'][:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    ssh = X.variables['ssh'][:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    u = X.variables['u'][:,:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    v = X.variables['v'][:,:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    w = X.variables['wt'][:,:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    salt = X.variables['salt'][:,:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    temp = X.variables['temp'][:,:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    mlp = X.variables['mlp'][:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    mls = X.variables['mls'][:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    mlt = X.variables['mlt'][:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    net_heating = X.variables['net_heating'][:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
+    prho = X.variables['prho'][:,:,lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
     
     X.close()
     etop_nc.close()
 
     Y = Dataset(DstFilePath2, 'w', format='NETCDF4')
-    Y.createDimension('time', 12)
-    Y.createDimension('depth', 50)
-    Y.createDimension('lat', 330)
-    Y.createDimension('lon', 720)
+    Y.createDimension('time', time.shape[0])
+    Y.createDimension('depth', depth.shape[0])
+    Y.createDimension('lat', lat.shape[0])
+    Y.createDimension('lon', lon.shape[0])
     Y.createDimension('bnds', 2)
     
     Y.createVariable('o2_pred', 'f', ('time', 'depth', 'lat', 'lon'), fill_value=-9.99E33, zlib=True)
@@ -73,7 +85,7 @@ def model_predict(tup):
     region_path = 'sea_num_soda342.nc'
     sea_region_nc = Dataset(region_path)
 
-    sea_region = sea_region_nc.variables['sea_num'][:]
+    sea_region = sea_region_nc.variables['sea_num'][lat_min_index:lat_max_index + 1, lon_min_index:lon_max_index + 1]
     sea_region_ravel = sea_region.ravel()
     sea_region_list = (sea_region_ravel != 14) & (sea_region_ravel != 15) & (sea_region_ravel != 16) & (sea_region_ravel != 17) & (sea_region_ravel != 18) & (sea_region_ravel != 19)
     sea_region_nc.close()
