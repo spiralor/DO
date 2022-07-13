@@ -3,7 +3,8 @@ import imageio
 import numpy as np
 
 """
-soda3.4.2
+Description:
+把背景场做成soda3.4.2标准化网格
 """
 lon_resolution = 0.5
 lat_resolution = 0.5
