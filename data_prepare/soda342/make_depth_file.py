@@ -92,17 +92,16 @@ def make_nc_file():
     nc_depth = Dataset(nc_depth_path, mode='w')
     nc_depth.createDimension('depth', depth_dimension)
     # nc_depth.createDimension('time', 1)
-    # nc_depth.createDimension('lat', 1)
-    # nc_depth.createDimension('lon', 1)
+    nc_depth.createDimension('lat', 1)
+    nc_depth.createDimension('lon', 1)
     # nc_depth.createVariable('depth', 'f', ('time', 'depth', 'lat', 'lon'), fill_value=-9.99E33, zlib=True)
-    nc_depth.createVariable('depth_height', 'f', ('depth'), fill_value=-9.99E33, zlib=True)
+    nc_depth.createVariable('depth_height', 'f', ('depth', 'lat', 'lon'), fill_value=-9.99E33, zlib=True)
     for depth_index in range(depth_dimension):
         depth_value = nc_file.variables['st_ocean_bnds'][depth_index, 1] - nc_file.variables['st_ocean_bnds'][depth_index, 0]
         nc_depth.variables['depth_height'][depth_index] = depth_value
     nc_file.close()
     nc_depth.close()
     return
-
 
 if __name__ == '__main__':
     # make_grid_nc_file_Indian()
